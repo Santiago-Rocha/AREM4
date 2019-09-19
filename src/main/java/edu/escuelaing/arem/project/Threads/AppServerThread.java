@@ -10,7 +10,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
@@ -19,15 +18,14 @@ import java.util.Set;
 import javax.imageio.IIOException;
 import javax.imageio.ImageIO;
 
+import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
+
 import edu.escuelaing.arem.project.Handlers.Hanlder;
 import edu.escuelaing.arem.project.Handlers.StaticMethodHanlder;
-import edu.escuelaing.arem.project.Sockets.AppSocket;
 import edu.escuelaing.arem.project.notation.Web;
 import net.sf.image4j.codec.ico.ICODecoder;
 import net.sf.image4j.codec.ico.ICOEncoder;
-
-import org.reflections.Reflections;
-import org.reflections.scanners.SubTypesScanner;
 
 /**
  * @author Santiago Rocha
@@ -35,7 +33,11 @@ import org.reflections.scanners.SubTypesScanner;
 
 public class AppServerThread implements Runnable {
     public static HashMap<String, Hanlder> ListURL = new HashMap<String, Hanlder>();
-    public static ServerSocket serverSocket = AppSocket.StartServerSocket();
+    public Socket clientSocket;
+
+    public AppServerThread(Socket cliente){
+        this.clientSocket =  cliente;
+    }
 
     /**
      * Este metodo escucha y maneja las peticiones que le llegan al servidor web
@@ -43,45 +45,44 @@ public class AppServerThread implements Runnable {
      * @throws IOException
      */
     public void run() {
-        while (true) {
-            try {
-                Socket clientSocket = AppSocket.StartClientSocket(serverSocket);
 
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                String inputLine = null, pet = null;
-                while ((inputLine = in.readLine()) != null) {
-                    if (inputLine.matches("(GET)+.*"))
-                        pet = inputLine.split(" ")[1];
-                    if (!in.ready())
-                        break;
-                }
-                System.out.println(pet);
-                pet = pet == null ? "/error.html" : pet;
-                pet = pet.equals("/") ? "/index.html" : pet;
-                if (pet.matches("(/app/).*")) {
-                    DinamicResourcesServer(out, pet);
-                } else {
-                    if (pet.matches(".*(.html)"))
-                        HtmlServer(out, pet);
+        try {
 
-                    else if (pet.matches(".*(.png)"))
-                        ImagesServer(out, clientSocket.getOutputStream(), pet);
-
-                    else if (pet.matches(".*(favicon.ico)"))
-                        FaviconServer(out, clientSocket.getOutputStream(), pet);
-
-                    else
-                        HtmlServer(out, "/error.html");
-
-                }
-
-                out.close();
-                in.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String inputLine = null, pet = null;
+            while ((inputLine = in.readLine()) != null) {
+                if (inputLine.matches("(GET)+.*"))
+                    pet = inputLine.split(" ")[1];
+                if (!in.ready())
+                    break;
             }
+            System.out.println(pet);
+            pet = pet == null ? "/error.html" : pet;
+            pet = pet.equals("/") ? "/index.html" : pet;
+            if (pet.matches("(/app/).*")) {
+                DinamicResourcesServer(out, pet);
+            } else {
+                if (pet.matches(".*(.html)"))
+                    HtmlServer(out, pet);
+
+                else if (pet.matches(".*(.png)"))
+                    ImagesServer(out, clientSocket.getOutputStream(), pet);
+
+                else if (pet.matches(".*(favicon.ico)"))
+                    FaviconServer(out, clientSocket.getOutputStream(), pet);
+
+                else
+                    HtmlServer(out, "/error.html");
+
+            }
+
+            out.close();
+            in.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
+
     }
 
     /**

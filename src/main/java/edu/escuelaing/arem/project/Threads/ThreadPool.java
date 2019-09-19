@@ -1,17 +1,22 @@
 package edu.escuelaing.arem.project.Threads;
 
-import java.io.IOException;
+import edu.escuelaing.arem.project.Sockets.AppSocket;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * @author Santiago Rocha
- */
-
 public class ThreadPool {
-    public static void main(String[] args) throws IOException{
-        AppServerThread.initialize();
-        ExecutorService exService = Executors.newCachedThreadPool();
-        exService.execute(new AppServerThread());
+    public static ServerSocket serverSocket = AppSocket.StartServerSocket();
+    public static ExecutorService exService = Executors.newCachedThreadPool();
+        
+
+    public static void start() {
+        while (true) {
+            Socket clientSocket = AppSocket.StartClientSocket(serverSocket);
+            exService.execute(new AppServerThread(clientSocket));
+
+        }
     }
+
 }
